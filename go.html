@@ -241,43 +241,38 @@ function chessTransition(fromIdx, toIdx, onDone) {
 
   let startTime = null;
 
+// zoooooom--
+function chessTransition(fromIdx, toIdx, onDone) {
+  const fw = frame.offsetWidth, fh = frame.offsetHeight;
+  canvas.width = fw; canvas.height = fh;
+  canvas.style.display = 'block';
+  const fromImg = imgObjs[fromIdx], toImg = imgObjs[toIdx];
+  const DURATION = 700;
+  function ease(t) { return t < 0.5 ? 2*t*t : -1+(4-2*t)*t; }
+  let startTime = null;
   function animate(ts) {
     if (!startTime) startTime = ts;
     const t = Math.min(1, (ts - startTime) / DURATION);
-
-    const scaleT  = easeOutCubic(t);   // 0 → 1 (zoom in)
-    const fadeOut = easeInQuad(t);     // old fades out
-    const fadeIn  = easeOutCubic(t);   // new fades in
-
-    const scale = 0.08 + scaleT * 0.92; // starts at 8%, grows to 100%
-
+    const p = ease(t);
+    const blur = t < 0.5 ? t * 20 : (1 - t) * 20; // تضبب ثم وضوح
     ctx.clearRect(0, 0, fw, fh);
-
-    // Draw FROM image fading out
-    ctx.save();
-    ctx.globalAlpha = 1 - fadeOut;
-    drawImg(fromImg, 1);
-    ctx.restore();
-
-    // Draw TO image zooming in from center
-    ctx.save();
-    ctx.globalAlpha = fadeIn;
-    ctx.translate(fw / 2, fh / 2);
-    ctx.scale(scale, scale);
-    ctx.translate(-fw / 2, -fh / 2);
-    drawImg(toImg, 1);
-    ctx.restore();
-
-    if (t < 1) {
-      requestAnimationFrame(animate);
-    } else {
-      canvas.style.display = 'none';
-      onDone();
-    }
+    ctx.save(); ctx.globalAlpha = 1 - p; ctx.filter = `blur(${blur}px)`; drawImg(fromImg, 1); ctx.restore();
+    ctx.save(); ctx.globalAlpha = p;     ctx.filter = `blur(${blur}px)`; drawImg(toImg, 1);   ctx.restore();
+    ctx.filter = 'none';
+    if (t < 1) requestAnimationFrame(animate);
+    else { canvas.style.display = 'none'; onDone(); }
   }
-
   requestAnimationFrame(animate);
 }
+```
+
+---
+
+## ✏️ طريقة التبديل
+
+في ملف `index.html` — ابحث عن:
+```
+function chessTransition(
 
 // ── Zoom on double-click ──
 let zoomed = false;
