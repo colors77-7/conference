@@ -233,14 +233,12 @@ function chessTransition(fromIdx, toIdx, onDone) {
 
   const fromImg = imgObjs[fromIdx];
   const toImg   = imgObjs[toIdx];
+  const DURATION = 650;
+  const N = 8; // ← عدد الشرائح
 
-  const DURATION = 1000; // ms
-
-  const N = 8;
   function easeOut(t) { return 1 - Math.pow(1 - t, 3); }
 
   let startTime = null;
-
   function animate(ts) {
     if (!startTime) startTime = ts;
     const t = Math.min(1, (ts - startTime) / DURATION);
@@ -249,19 +247,84 @@ function chessTransition(fromIdx, toIdx, onDone) {
 
     for (let i = 0; i < N; i++) {
       const delay = i / N * 0.4;
-      const lt = Math.min(1, Math.max(0, (t - delay) / (1 - delay)));
-      const p = easeOut(lt);
-      const sh = fh / N;
+      const lt  = Math.min(1, Math.max(0, (t - delay) / (1 - delay)));
+      const p   = easeOut(lt);
+      const sh  = fh / N;
       const dir = i % 2 === 0 ? 1 : -1;
 
       ctx.save();
       ctx.beginPath();
       ctx.rect(0, i * sh, fw, sh);
       ctx.clip();
-      ctx.drawImage(fromImg, -dir * fw * p, 0, fw, fh);
-      ctx.drawImage(toImg,    dir * fw * (1 - p), 0, fw, fh);
+
+      // الصورة القديمة تخرج
+      ctx.save();
+      ctx.translate(-dir * fw * p, 0);
+      drawImg(fromImg, 1);
+      ctx.restore();
+
+      // الصورة الجديدة تدخل
+      ctx.save();
+      ctx.translate(dir * fw * (1 - p), 0);
+      drawImg(toImg, 1);
+      ctx.restore();
+
       ctx.restore();
     }
+
+    if (t < 1) {
+      requestAnimationFrame(animate);
+    } else {
+      canvas.style.display = 'none';
+      onDone();
+    }
+  }
+  requestAnimationFrame(animate);
+}
+
+function chessTransition_OLD(fromIdx, toIdx, onDone) {
+  const fw = frame.offsetWidth;
+  const fh = frame.offsetHeight;
+  canvas.width  = fw;
+  canvas.height = fh;
+  canvas.style.display = 'block';
+
+  const fromImg = imgObjs[fromIdx];
+  const toImg   = imgObjs[toIdx];
+
+  const DURATION = 550; // ms
+
+  function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+  function easeInQuad(t)   { return t * t; }
+
+  let startTime = null;
+
+  function animate(ts) {
+    if (!startTime) startTime = ts;
+    const t = Math.min(1, (ts - startTime) / DURATION);
+
+    const scaleT  = easeOutCubic(t);   // 0 → 1 (zoom in)
+    const fadeOut = easeInQuad(t);     // old fades out
+    const fadeIn  = easeOutCubic(t);   // new fades in
+
+    const scale = 0.08 + scaleT * 0.92; // starts at 8%, grows to 100%
+
+    ctx.clearRect(0, 0, fw, fh);
+
+    // Draw FROM image fading out
+    ctx.save();
+    ctx.globalAlpha = 1 - fadeOut;
+    drawImg(fromImg, 1);
+    ctx.restore();
+
+    // Draw TO image zooming in from center
+    ctx.save();
+    ctx.globalAlpha = fadeIn;
+    ctx.translate(fw / 2, fh / 2);
+    ctx.scale(scale, scale);
+    ctx.translate(-fw / 2, -fh / 2);
+    drawImg(toImg, 1);
+    ctx.restore();
 
     if (t < 1) {
       requestAnimationFrame(animate);
